@@ -7,6 +7,7 @@ import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class UserAccountTest {
 
@@ -17,6 +18,7 @@ class UserAccountTest {
         userAccount.onCreate();
 
         assertNotNull(userAccount.getCreatedAt());
+        assertNotNull(userAccount.getUpdatedAt());
     }
 
     @Test
@@ -28,5 +30,18 @@ class UserAccountTest {
         userAccount.onCreate();
 
         assertEquals(fixedTime, userAccount.getCreatedAt());
+        assertNotNull(userAccount.getUpdatedAt());
+    }
+
+    @Test
+    void onUpdateShouldRefreshUpdatedAt() {
+        UserAccount userAccount = new UserAccount();
+        Instant oldUpdatedAt = Instant.parse("2026-03-09T00:00:00Z");
+        ReflectionTestUtils.setField(userAccount, "updatedAt", oldUpdatedAt);
+
+        userAccount.onUpdate();
+
+        assertNotNull(userAccount.getUpdatedAt());
+        assertNotEquals(oldUpdatedAt, userAccount.getUpdatedAt());
     }
 }

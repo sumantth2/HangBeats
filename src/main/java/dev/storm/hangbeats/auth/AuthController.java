@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -59,5 +60,16 @@ public class AuthController {
     @GetMapping("/me")
     public CurrentUserResponse getCurrentUser(Authentication authentication) {
         return new CurrentUserResponse(authentication.getName());
+    }
+
+    @GetMapping("/username-availability")
+    public UsernameAvailabilityResponse checkUsernameAvailability(@RequestParam String username) {
+        String normalizedUsername = username == null ? "" : username.trim().toLowerCase();
+        if (normalizedUsername.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username is required");
+        }
+
+        boolean exists = userAccountRepository.existsByUsernameIgnoreCase(normalizedUsername);
+        return new UsernameAvailabilityResponse(normalizedUsername, !exists);
     }
 }
