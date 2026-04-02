@@ -1,6 +1,10 @@
 package dev.storm.hangbeats.user;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,6 +48,46 @@ public class UserController {
         return users.stream()
                 .map(UserAccountResponse::from)
                 .toList();
+    }
+
+    @GetMapping("/page")
+    public PaginatedUsersResponse getUsersPage(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String query
+    ) {
+        validatePageArguments(page, size);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+        Page<UserAccount> usersPage;
+        if (query != null && !query.trim().isEmpty()) {
+            String normalizedQuery = query.trim();
+            usersPage = userAccountRepository.findByUsernameContainingIgnoreCaseOrDisplayNameContainingIgnoreCase(
+                    normalizedQuery,
+                    normalizedQuery,
+                    pageable
+            );
+        } else {
+            usersPage = userAccountRepository.findAll(pageable);
+        }
+
+        return new PaginatedUsersResponse(
+                usersPage.getContent().stream().map(UserAccountResponse::from).toList(),
+                usersPage.getNumber(),
+                usersPage.getSize(),
+                usersPage.getTotalElements(),
+                usersPage.getTotalPages(),
+                usersPage.hasNext(),
+                usersPage.hasPrevious()
+        );
+    }
+
+    @GetMapping("/stats")
+    public UserStatsResponse getUsersStats() {
+        long totalUsers = userAccountRepository.count();
+        long usersCreatedLast24Hours = userAccountRepository.countByCreatedAtAfter(Instant.now().minusSeconds(24 * 60 * 60));
+
+        return new UserStatsResponse(totalUsers, usersCreatedLast24Hours);
     }
 
     @GetMapping("/{id}")
@@ -102,5 +147,14 @@ public class UserController {
 
     private String normalizeDisplayName(String rawDisplayName) {
         return rawDisplayName.trim();
+    }
+
+    private void validatePageArguments(int page, int size) {
+        if (page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to 0");
+        }
+        if (size < 1 || size > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and 100");
+        }
     }
 }

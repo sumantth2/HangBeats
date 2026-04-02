@@ -5,6 +5,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -58,6 +60,51 @@ class UserControllerTest {
     }
 
     @Test
+    void getUsersPageShouldReturnPagedResult() {
+        UserAccount first = userAccount(1L, "first", "First User");
+        UserAccount second = userAccount(2L, "second", "Second User");
+        when(userAccountRepository.findAll(PageRequest.of(0, 2, org.springframework.data.domain.Sort.by("id").ascending())))
+                .thenReturn(new PageImpl<>(List.of(first, second), PageRequest.of(0, 2), 5));
+
+        PaginatedUsersResponse response = userController.getUsersPage(0, 2, null);
+
+        assertEquals(0, response.page());
+        assertEquals(2, response.size());
+        assertEquals(5, response.totalItems());
+        assertEquals(3, response.totalPages());
+        assertEquals(true, response.hasNext());
+        assertEquals(false, response.hasPrevious());
+        assertEquals(2, response.items().size());
+        assertEquals(1L, response.items().getFirst().id());
+    }
+
+    @Test
+    void getUsersPageShouldValidateArguments() {
+        ResponseStatusException negativePageException = assertThrows(
+                ResponseStatusException.class,
+                () -> userController.getUsersPage(-1, 10, null)
+        );
+        assertEquals(HttpStatus.BAD_REQUEST, negativePageException.getStatusCode());
+
+        ResponseStatusException invalidSizeException = assertThrows(
+                ResponseStatusException.class,
+                () -> userController.getUsersPage(0, 101, null)
+        );
+        assertEquals(HttpStatus.BAD_REQUEST, invalidSizeException.getStatusCode());
+    }
+
+    @Test
+    void getUsersStatsShouldReturnCounts() {
+        when(userAccountRepository.count()).thenReturn(12L);
+        when(userAccountRepository.countByCreatedAtAfter(any(Instant.class))).thenReturn(4L);
+
+        UserStatsResponse response = userController.getUsersStats();
+
+        assertEquals(12L, response.totalUsers());
+        assertEquals(4L, response.usersCreatedLast24Hours());
+    }
+
+    @Test
     void getUserByIdShouldReturnUserWhenExists() {
         UserAccount stored = userAccount(10L, "john", "John Doe");
         when(userAccountRepository.findById(10L)).thenReturn(Optional.of(stored));
@@ -87,6 +134,7 @@ class UserControllerTest {
             UserAccount entity = invocation.getArgument(0);
             ReflectionTestUtils.setField(entity, "id", 10L);
             ReflectionTestUtils.setField(entity, "createdAt", Instant.parse("2026-03-09T00:00:00Z"));
+            ReflectionTestUtils.setField(entity, "updatedAt", Instant.parse("2026-03-09T00:00:00Z"));
             return entity;
         });
 
@@ -98,6 +146,7 @@ class UserControllerTest {
         assertEquals("alice", response.getBody().username());
         assertEquals("Alice Doe", response.getBody().displayName());
         assertEquals(Instant.parse("2026-03-09T00:00:00Z"), response.getBody().createdAt());
+        assertEquals(Instant.parse("2026-03-09T00:00:00Z"), response.getBody().updatedAt());
     }
 
     @Test
@@ -125,6 +174,7 @@ class UserControllerTest {
         assertEquals(5L, response.id());
         assertEquals("newname", response.username());
         assertEquals("New Name", response.displayName());
+        assertEquals(Instant.parse("2026-03-09T00:00:00Z"), response.updatedAt());
     }
 
     @Test
@@ -172,6 +222,7 @@ class UserControllerTest {
         userAccount.setDisplayName(displayName);
         ReflectionTestUtils.setField(userAccount, "id", id);
         ReflectionTestUtils.setField(userAccount, "createdAt", Instant.parse("2026-03-09T00:00:00Z"));
+        ReflectionTestUtils.setField(userAccount, "updatedAt", Instant.parse("2026-03-09T00:00:00Z"));
         return userAccount;
     }
 }

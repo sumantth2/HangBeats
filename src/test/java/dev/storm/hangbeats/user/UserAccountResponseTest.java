@@ -16,6 +16,7 @@ class UserAccountResponseTest {
         userAccount.setDisplayName("John Doe");
         ReflectionTestUtils.setField(userAccount, "id", 77L);
         ReflectionTestUtils.setField(userAccount, "createdAt", Instant.parse("2026-03-09T00:00:00Z"));
+        ReflectionTestUtils.setField(userAccount, "updatedAt", Instant.parse("2026-03-09T01:00:00Z"));
 
         UserAccountResponse response = UserAccountResponse.from(userAccount);
 
@@ -23,5 +24,6 @@ class UserAccountResponseTest {
         assertEquals("john", response.username());
         assertEquals("John Doe", response.displayName());
         assertEquals(Instant.parse("2026-03-09T00:00:00Z"), response.createdAt());
+        assertEquals(Instant.parse("2026-03-09T01:00:00Z"), response.updatedAt());
     }
 }

@@ -101,4 +101,38 @@ class AuthControllerTest {
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         assertEquals("Username already exists", exception.getReason());
     }
+
+    @Test
+    void checkUsernameAvailabilityShouldReturnAvailableWhenMissing() {
+        JwtService jwtService = Mockito.mock(JwtService.class);
+        UserAccountRepository userAccountRepository = Mockito.mock(UserAccountRepository.class);
+        JwtProperties jwtProperties = new JwtProperties();
+        jwtProperties.setSecret("12345678901234567890123456789012");
+        jwtProperties.setExpirationMinutes(15);
+        AuthController controller = new AuthController(jwtService, jwtProperties, userAccountRepository);
+        when(userAccountRepository.existsByUsernameIgnoreCase("newuser")).thenReturn(false);
+
+        UsernameAvailabilityResponse response = controller.checkUsernameAvailability(" NewUser ");
+
+        assertEquals("newuser", response.username());
+        assertEquals(true, response.available());
+    }
+
+    @Test
+    void checkUsernameAvailabilityShouldRejectBlankValues() {
+        JwtService jwtService = Mockito.mock(JwtService.class);
+        UserAccountRepository userAccountRepository = Mockito.mock(UserAccountRepository.class);
+        JwtProperties jwtProperties = new JwtProperties();
+        jwtProperties.setSecret("12345678901234567890123456789012");
+        jwtProperties.setExpirationMinutes(15);
+        AuthController controller = new AuthController(jwtService, jwtProperties, userAccountRepository);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> controller.checkUsernameAvailability("   ")
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals("Username is required", exception.getReason());
+    }
 }
