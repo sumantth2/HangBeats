@@ -1,0 +1,35 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  application:
+    name: hangbeats-backend
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/hangbeats?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+hangbeats:
+  cors:
+    allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
+  security:
+    jwt:
+      secret: ${JWT_SECRET:replace-this-with-at-least-32-char-secret-key}
+      expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
